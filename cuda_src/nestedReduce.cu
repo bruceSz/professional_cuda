@@ -53,13 +53,59 @@ __global__ void gpuRecursiveReduce(int * g_data, int * g_odata, unsigned int siz
 
     if(tid == 0) {
         gpuRecursiveReduce<<<1,stride>>>(idata, odata, stride);
-        //__syncthreads();
-        cudaDeviceSynchronize();
+        __syncthreads();
+        //cudaDeviceSynchronize();
         
     }
     __syncthreads();
 
 }
+
+
+
+__global__ void gpuRecursiveReduce2(int* g_idata, int * g_odata, int stride, int const dim) {
+    
+    int *idata = g_idata + blockIdx.x * dim;
+
+    if(stride == 1 && threadIdx.x == 0) {
+        g_odata[blockIdx.x] = idata[0] + idata[1];
+        return;
+    }
+
+    idata[threadIdx.x] += idata[threadIdx.x + stride];
+    if(threadIdx.x ==0 && blockIdx.x == 0) {
+        gpuRecursiveReduce2<<<gridDim.x, stride/2>>>(g_idata, g_odata, stride/2, dim);
+    }
+
+}
+
+
+
+__global__ void gpuRecursiveReduceNoSync(int *g_idata, int* g_odata,
+unsigned int size) {
+    unsigned int tid = threadIdx.x;
+
+    int *idata = g_idata + blockIdx.x* blockDim.x;
+    int *odata = &g_odata[blockIdx.x];
+
+
+    if(size == 2 && tid ==0) {
+        g_odata[blockIdx.x] = idata[0] + idata[1];
+        return;
+    }
+
+
+
+    int stride  = size >> 1;
+
+    if(stride > 1 && tid < stride) {
+        idata[tid] +=idata[tid+stride];
+        if(tid == 0) {
+            gpuRecursiveReduceNoSync<<<1, stride>>>(idata, odata,stride);
+        }
+    }
+}
+
 
 
 int main() {
@@ -143,6 +189,35 @@ int main() {
     cout << " gpu recursive elaps: " << iElaps << " gpu sum: " << gpu_sum 
     << " grid " << grid.x << " block " << block.x  << " Elaps: " << iElaps << endl;
 
+    memset(h_odata, 0, sizeof(h_odata));
+    cudaMemcpy(d_odata, h_odata, sizeof(d_odata), cudaMemcpyHostToDevice);
+
+    iStart = seconds();
+    gpu_sum = 0;
+    gpuRecursiveReduceNoSync<<<grid,block>>>(d_idata, d_odata, size);
+    cudaMemcpy(h_odata, d_odata, grid.x*sizeof(int), cudaMemcpyDeviceToHost);
+    for(int i=0;i<grid.x;i++) {
+        gpu_sum += h_odata[i];
+    }
+
+    iElaps = seconds() - iStart;
+    cout << " gpu recursive no sync elaps: " << iElaps << " gpu sum: " << gpu_sum 
+    << " grid " << grid.x << " block " << block.x  << " Elaps: " << iElaps << endl;
+
+    memset(h_odata, 0, sizeof(h_odata));
+    cudaMemcpy(d_odata, h_odata, sizeof(d_odata), cudaMemcpyHostToDevice);
+
+    iStart = seconds();
+    gpu_sum = 0;
+    gpuRecursiveReduce2<<<grid,block.x/2>>>(d_idata, d_odata, block.x/2, block.x);
+    cudaMemcpy(h_odata, d_odata, grid.x*sizeof(int), cudaMemcpyDeviceToHost);
+    for(int i=0;i<grid.x;i++) {
+        gpu_sum += h_odata[i];
+    }
+
+    iElaps = seconds() - iStart;
+    cout << " gpu recursive reduce 2  elaps: " << iElaps << " gpu sum: " << gpu_sum 
+    << " grid " << grid.x << " block " << block.x  << " Elaps: " << iElaps << endl;
 
 
 }
