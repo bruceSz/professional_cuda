@@ -62,6 +62,29 @@ __global__ void gpuRecursiveReduce(int * g_data, int * g_odata, unsigned int siz
 }
 
 
+__global__ void reduceNeighboredLess(int* g_idata, int* g_odata, unsigned int n) {
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x + tid;
+
+    // start of this block data.
+    int* idata = g_idata + blockIdx.x * blockDim.x;
+
+    if (idx >= n) return;
+
+    for(int stride  = 1; stride < blockDim.x; stride *= 2) {
+        int index = 2 * stride * tid;
+        if( index < blockDim.x ) {
+            idata[index] += idata[index+stride];
+        }
+        __syncthreads();
+    }
+
+    if(tid==0) g_odata[blockIdx.x]  = idata[0];
+
+
+}
+
+
 
 __global__ void gpuRecursiveReduce2(int* g_idata, int * g_odata, int stride, int const dim) {
     
@@ -219,5 +242,21 @@ int main() {
     cout << " gpu recursive reduce 2  elaps: " << iElaps << " gpu sum: " << gpu_sum 
     << " grid " << grid.x << " block " << block.x  << " Elaps: " << iElaps << endl;
 
+
+
+    memset(h_odata, 0, sizeof(h_odata));
+    cudaMemcpy(d_odata, h_odata, sizeof(d_odata), cudaMemcpyHostToDevice);
+
+    iStart = seconds();
+    gpu_sum = 0;
+    reduceNeighboredLess<<<grid,block>>>(d_idata, d_odata, size);
+    cudaMemcpy(h_odata, d_odata, grid.x*sizeof(int), cudaMemcpyDeviceToHost);
+    for(int i=0;i<grid.x;i++) {
+        gpu_sum += h_odata[i];
+    }
+
+    iElaps = seconds() - iStart;
+    cout << " gpu neighbor less warp divergence elaps: " << iElaps << " gpu sum: " << gpu_sum 
+    << " grid " << grid.x << " block " << block.x  << " Elaps: " << iElaps << endl;
 
 }
