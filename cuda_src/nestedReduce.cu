@@ -85,6 +85,69 @@ __global__ void reduceNeighboredLess(int* g_idata, int* g_odata, unsigned int n)
 }
 
 
+__global__ void reduceInterleave(int * g_idata, int * g_odata, unsigned int n) {
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x + threadIdx.x;
+
+    // This is the start of data of this block.
+    int *idata  = g_idata + blockIdx.x * blockDim.x;
+
+    if(idx >=n) return;
+
+
+    for(int stride = blockDim.x/2;stride > 0; stride >>= 1) {
+        if(tid <stride) {
+            idata[tid] += idata[tid + stride];
+        }
+        __syncthreads();
+    }
+
+    if(tid == 0) g_odata[blockIdx.x]  = idata[0];
+
+}
+
+__global__ void reduceUnrolling2(int* g_idata, int * g_odata, unsigned int n) {
+    unsigned int tid = threadIdx.x;
+    // every second block.
+    unsigned int idx = blockIdx.x * blockDim.x * 2 + threadIdx.x;
+
+    int *idata = g_idata + blockIdx.x * blockDim.x;
+
+    // merge block level data first.
+    if (idx  + blockDim.x < n) 
+        g_idata[idx ] += g_idata[idx+blockDim.x];
+    
+    __syncthreads();
+
+    for(int stride  = blockDim.x /2; stride>0;stride >>=1 ) {
+        if(tid < stride) {
+            idata[tid] += idata[tid + stride];
+        }
+        __syncthreads();
+    }
+
+    if (tid ==0) g_odata[blockIdx.x] = idata[0];
+}
+
+
+__global__ void reduceUnrolling4(int * g_idata, int *g_odata, unsigned int n) {
+    unsigned int tid = threadIdx.x;
+    unsigned int idx = blockIdx.x * blockDim.x * 4+ tid;
+
+    int *idata = g_idata + blockIdx * blockDim.x * 4;
+
+    if((idx+3*blockDim.x )< n) {
+        int a1 = g_idata[idx] = 
+        int a2 = g_idata[idx + blockDim.x];
+        int a3 = g_idata[idx + 2*blockDim.x];
+        int a4 = g_idata[idx + 3*blockDim.x];
+        g_idata[idx]  = a1 + a2 + a3 + a4;
+    }
+
+    __syncthreads();
+}
+
+
 
 __global__ void gpuRecursiveReduce2(int* g_idata, int * g_odata, int stride, int const dim) {
     
