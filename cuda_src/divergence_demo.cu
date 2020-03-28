@@ -1,6 +1,7 @@
 #include <cuda_runtime.h>
 #include <iostream>
 #include "common.h"
+#include <cmath>
 
 using namespace std;
 
@@ -102,8 +103,8 @@ int main(int argc, char** argv) {
 
     std::cout << "using device " << dev_prop.name << std::endl; 
 
-    int size = 8192;
-    int blocksize = 8192;
+    int size = pow(2,20);
+    int blocksize = pow(2,10);
     int test_no = 1;
 
     if(argc > 1) test_no = atoi(argv[1]);
@@ -151,7 +152,7 @@ int main(int argc, char** argv) {
     
         cudaDeviceSynchronize();
         elaps = seconds() - start;
-        cout << " k3 finished with ts: " << elaps << std::endl;
+        cout <<" k3 finished with ts: " << elaps << std::endl;
     } else if(test_no == 4) {
         cout << " test on k4" << std::endl;
         start = seconds();
