@@ -38,7 +38,7 @@ void checkRes(float* host, float* gpu, const int N) {
     for(int i=0;i<N; i++) {
         if(abs(host[i] - gpu[i]) > eps) {
             printf("host %f while gpu %f", host[i], gpu[i]);
-            printf("Array not match.\n\n");
+            printf(" Array not match at %d.\n\n", i);
             break;
         }
     }
@@ -76,7 +76,7 @@ int main(int argc, char** argv) {
     //       res of get last error: 0
 
     //   scale smaller than 2 will work also
-    int nx = 1<<13;
+    int nx = 1<<14;
     int ny = 1<<14;
 
     int nxy = nx*ny;
@@ -110,6 +110,10 @@ int main(int argc, char** argv) {
     cudaMalloc((void**)&d_matA, nb) ;
     cudaMalloc((void**)&d_matB, nb) ;
     cudaMalloc((void**)&d_matC, nb) ;
+    
+    auto m = cudaGetLastError();
+    // if m == 2 then malloc failed.
+    cout << "res of get last error after cuda Malloc: " << m << std::endl;
     //start = seconds();
 
     cudaMemcpy(d_matA, ha, nb, cudaMemcpyHostToDevice);
