@@ -5,13 +5,6 @@
 
 
 using namespace std;
-void initD(float* ip, const int size) {
-    int i;
-    for(i=0;i<size;i++)
-     {
-         ip[i] = (float)(rand() & 0xFF) / 10.0f;
-     }
-}
 
 
 void sumMatrixHost(float* A, float* B, float* C, const int nx, const int ny) {
@@ -33,16 +26,7 @@ void sumMatrixHost(float* A, float* B, float* C, const int nx, const int ny) {
 
 
 
-void checkRes(float* host, float* gpu, const int N) {
-    double eps = 1.0E-8;
-    for(int i=0;i<N; i++) {
-        if(abs(host[i] - gpu[i]) > eps) {
-            printf("host %f while gpu %f", host[i], gpu[i]);
-            printf(" Array not match at %d.\n\n", i);
-            break;
-        }
-    }
-}
+
 
 
 

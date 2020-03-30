@@ -13,6 +13,31 @@ inline double seconds()
 }
 
 
+void checkRes(float* host, float* gpu, const int N) {
+    double eps = 1.0E-8;
+    for(int i=0;i<N; i++) {
+        if(abs(host[i] - gpu[i]) > eps) {
+            printf("host %f while gpu %f", host[i], gpu[i]);
+            printf(" Array not match at %d.\n\n", i);
+            break;
+        }
+    }
+}
+
+void initD(float* ip, const int size) {
+    int i;
+    for(i=0;i<size;i++)
+     {
+         ip[i] = (float)(rand() & 0xFF) / 10.0f;
+     }
+}
+
+
+void sumArrayOnHost(float* A, float* B, float* C, const int n, int offset) {
+    for(int idx = offset, k=0;idx< n;idx++, k++) {
+        C[k] = A[idx] + B[idx];
+    }
+}
 
 #define CHECK(call) \
 {\
